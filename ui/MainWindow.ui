@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>VSC-INSTALLER-PLUS</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="titleLabel">
+      <property name="text">
+       <string>VSC-INSTALLER-PLUS - Gestor de Instalación de Tarballs</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>16</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="sourceGroupBox">
+      <property name="title">
+       <string>Fuente del Paquete</string>
+      </property>
+      <layout class="QVBoxLayout" name="sourceLayout">
+       <item>
+        <widget class="QRadioButton" name="localFileRadio">
+         <property name="text">
+          <string>Archivo local</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="localFileLayout">
+         <item>
+          <widget class="QLineEdit" name="localFileLineEdit">
+           <property name="placeholderText">
+            <string>Seleccionar archivo tarball...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="browseButton">
+           <property name="text">
+            <string>Examinar...</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="urlRadio">
+         <property name="text">
+          <string>URL de descarga</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="urlLineEdit">
+         <property name="placeholderText">
+          <string>https://ejemplo.com/paquete.tar.gz</string>
+         </property>
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="installGroupBox">
+      <property name="title">
+       <string>Opciones de Instalación</string>
+      </property>
+      <layout class="QVBoxLayout" name="installLayout">
+       <item>
+        <layout class="QHBoxLayout" name="installPathLayout">
+         <item>
+          <widget class="QLabel" name="installPathLabel">
+           <property name="text">
+            <string>Ruta de instalación:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="installPathLineEdit">
+           <property name="text">
+            <string>/opt</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="browseInstallButton">
+           <property name="text">
+            <string>Examinar...</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="createDesktopCheckBox">
+         <property name="text">
+          <string>Crear entrada en el menú de aplicaciones</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="createSymlinkCheckBox">
+         <property name="text">
+          <string>Crear enlace simbólico en /usr/local/bin</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="progressBar">
+      <property name="value">
+       <number>0</number>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTextEdit" name="logTextEdit">
+      <property name="maximumHeight">
+       <number>150</number>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="buttonLayout">
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="installButton">
+        <property name="text">
+         <string>Instalar</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="updateButton">
+        <property name="text">
+         <string>Actualizar</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="clearButton">
+        <property name="text">
+         <string>Limpiar</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuArchivo">
+    <property name="title">
+     <string>Archivo</string>
+    </property>
+    <addaction name="actionSalir"/>
+   </widget>
+   <widget class="QMenu" name="menuHerramientas">
+    <property name="title">
+     <string>Herramientas</string>
+    </property>
+    <addaction name="actionVer_instalados"/>
+    <addaction name="actionLimpiar_registros"/>
+   </widget>
+   <addaction name="menuArchivo"/>
+   <addaction name="menuHerramientas"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSalir">
+   <property name="text">
+    <string>Salir</string>
+   </property>
+  </action>
+  <action name="actionVer_instalados">
+   <property name="text">
+    <string>Ver instalados</string>
+   </property>
+  </action>
+  <action name="actionLimpiar_registros">
+   <property name="text">
+    <string>Limpiar registros</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
