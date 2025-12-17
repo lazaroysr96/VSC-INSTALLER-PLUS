@@ -801,6 +801,9 @@ bool Installer::copyDirectoryRecursively(const QString &sourcePath, const QStrin
     // Copy all files and subdirectories
     QStringList entries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
     
+    int totalFiles = entries.size();
+    int copiedFiles = 0;
+    
     foreach (const QString &entry, entries) {
         QString sourceEntry = sourcePath + "/" + entry;
         QString destEntry = destPath + "/" + entry;
@@ -832,6 +835,16 @@ bool Installer::copyDirectoryRecursively(const QString &sourcePath, const QStrin
                 QFile destFile(destEntry);
                 destFile.setPermissions(fileInfo.permissions());
             }
+        }
+        
+        // Update progress and process UI events to prevent freezing
+        copiedFiles++;
+        if (copiedFiles % 10 == 0) { // Update every 10 files
+            int progressPercent = 60 + (int)((float)copiedFiles / totalFiles * 30); // 60-90% range
+            updateProgress(progressPercent);
+            
+            // Process UI events to keep interface responsive
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         }
     }
     
