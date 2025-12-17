@@ -51,6 +51,7 @@ private:
                      const QString &sourceUrl, const QString &execPath);
     bool downloadFile(const QUrl &url, const QString &destPath);
     QString findExecutableInDirectory(const QString &dirPath);
+    QString findExecutableInDirectoryRecursive(const QString &dirPath, int depth);
     QString getAppNameFromPath(const QString &path);
     QString getVersionFromExecutable(const QString &execPath);
     

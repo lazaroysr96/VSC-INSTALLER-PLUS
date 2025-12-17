@@ -555,7 +555,14 @@ bool Installer::downloadFile(const QUrl &url, const QString &destPath)
 
 QString Installer::findExecutableInDirectory(const QString &dirPath)
 {
-    log("Buscando ejecutables en: " + dirPath);
+    return findExecutableInDirectoryRecursive(dirPath, 0);
+}
+
+QString Installer::findExecutableInDirectoryRecursive(const QString &dirPath, int depth)
+{
+    const int MAX_DEPTH = 3;
+    
+    log("Buscando ejecutables en: " + dirPath + " (profundidad: " + QString::number(depth) + ")");
     
     QDir dir(dirPath);
     if (!dir.exists()) {
@@ -563,63 +570,7 @@ QString Installer::findExecutableInDirectory(const QString &dirPath)
         return "";
     }
     
-    // First, check if there's a subdirectory with common names (like "Windsurf")
-    QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    log("Subdirectorios encontrados: " + QString::number(subdirs.size()));
-    
-    foreach (const QString &subdir, subdirs) {
-        QString subPath = dirPath + "/" + subdir;
-        
-        // Special handling for Windsurf directory
-        if (subdir.toLower() == "windsurf") {
-            log("Detectada carpeta Windsurf: " + subPath);
-            QString execInWindsurf = findExecutableInDirectory(subPath);
-            if (!execInWindsurf.isEmpty()) {
-                return execInWindsurf;
-            }
-        }
-        
-        // Check other common subdirectory names
-        if (subdir.toLower() == "cursor" || subdir.toLower() == "code" || 
-            subdir.toLower() == "vscode" || subdir.toLower().contains("visual")) {
-            log("Detectada subcarpeta de aplicación: " + subdir);
-            QString execInSub = findExecutableInDirectory(subPath);
-            if (!execInSub.isEmpty()) {
-                return execInSub;
-            }
-        }
-        
-        // Check for bin directories
-        if (subdir.toLower() == "bin") {
-            log("Detectada carpeta bin: " + subPath);
-            QString execInBin = findExecutableInDirectory(subPath);
-            if (!execInBin.isEmpty()) {
-                return execInBin;
-            }
-        }
-    }
-    
-    // Common executable names for VS Code and variants
-    QStringList vsCodeNames = {"code", "vscode", "code-oss", "code-insiders"};
-    QStringList windsurfNames = {"windsurf", "windsurf-bin"};
-    QStringList cursorNames = {"cursor", "cursor-bin"};
-    QStringList genericNames = {"app", "run", "main", "application"};
-    
-    // Combine all executable names
-    QStringList allExecNames = vsCodeNames + windsurfNames + cursorNames + genericNames;
-    
     // Check for executables in current directory
-    foreach (const QString &execName, allExecNames) {
-        QString execPath = dirPath + "/" + execName;
-        QFileInfo execInfo(execPath);
-        
-        if (execInfo.exists() && execInfo.isExecutable()) {
-            log("Ejecutable Windsurf encontrado: " + execPath);
-            return execPath;
-        }
-    }
-    
-    // Check all files in the directory for executables
     QStringList files = dir.entryList(QDir::Files | QDir::Executable);
     log("Archivos ejecutables en directorio: " + QString::number(files.size()));
     
@@ -646,9 +597,32 @@ QString Installer::findExecutableInDirectory(const QString &dirPath)
                 // ELF files start with 0x7F 'ELF'
                 QByteArray elfHeader = QByteArray::fromHex("7F454C46");
                 if (header.startsWith(elfHeader) || header.startsWith("#!")) {
-                    log("Ejecutable genérico encontrado: " + filePath);
+                    log("Ejecutable válido encontrado: " + filePath);
                     return filePath;
                 }
+            }
+        }
+    }
+    
+    // If no executables found and we haven't reached max depth, check subdirectories
+    if (files.isEmpty() && depth < MAX_DEPTH) {
+        QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        log("Subdirectorios encontrados: " + QString::number(subdirs.size()));
+        
+        // If exactly one subdirectory, descend automatically
+        if (subdirs.size() == 1) {
+            QString subPath = dirPath + "/" + subdirs.first();
+            log("Descendiendo automáticamente al único subdirectorio: " + subPath);
+            return findExecutableInDirectoryRecursive(subPath, depth + 1);
+        }
+        
+        // If multiple subdirectories, try each one
+        foreach (const QString &subdir, subdirs) {
+            QString subPath = dirPath + "/" + subdir;
+            log("Probando subdirectorio: " + subPath);
+            QString result = findExecutableInDirectoryRecursive(subPath, depth + 1);
+            if (!result.isEmpty()) {
+                return result;
             }
         }
     }
