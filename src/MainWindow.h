@@ -8,7 +8,9 @@
 #include <QRadioButton>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QTabWidget>
 #include "Installer.h"
+#include "LauncherCreator.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -62,6 +64,8 @@ private:
 
     Ui::MainWindow *ui;
     Installer *m_installer;
+    LauncherCreator *m_launcherCreator;
+    QTabWidget *m_tabWidget;
 };
 
 #endif // MAINWINDOW_H

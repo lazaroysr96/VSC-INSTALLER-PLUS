@@ -68,8 +68,26 @@ bool Installer::installFromLocalFile(const QString &filePath, const QString &ins
     }
 
     // Extract to a temporary directory first
-    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/vsc_installer_temp_" + QString::number(QCoreApplication::applicationPid());
-    QDir().mkpath(tempDir);
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
+    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/vsc_installer_temp_" + timestamp + "_" + QString::number(QCoreApplication::applicationPid());
+    
+    log("Creando directorio temporal: " + tempDir);
+    
+    // Ensure the directory exists and is writable
+    if (!QDir().mkpath(tempDir)) {
+        log("ERROR: No se pudo crear el directorio temporal: " + tempDir);
+        emit installationCompleted(false, "No se pudo crear directorio temporal");
+        return false;
+    }
+    
+    // Verify directory is writable
+    QFileInfo tempDirInfo(tempDir);
+    if (!tempDirInfo.exists() || !tempDirInfo.isWritable()) {
+        log("ERROR: El directorio temporal no es escribible: " + tempDir);
+        QDir(tempDir).removeRecursively();
+        emit installationCompleted(false, "Directorio temporal no es escribible");
+        return false;
+    }
     
     log("Extrayendo temporalmente a: " + tempDir);
     updateProgress(20);
@@ -336,6 +354,11 @@ bool Installer::extractTarball(const QString &tarballPath, const QString &destPa
         return false;
     }
     
+    // List contents before extraction for debugging
+    QDir destDir(destPath);
+    QStringList beforeContents = destDir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
+    log("Contenido antes de extracción: " + QString::number(beforeContents.size()) + " elementos");
+    
     QProcess process;
     QStringList arguments;
     
@@ -377,6 +400,25 @@ bool Installer::extractTarball(const QString &tarballPath, const QString &destPa
         log(QString("ERROR: Falló la extracción - Código de salida: %1").arg(exitCode));
         log("ERROR Output: " + errorOutput);
         return false;
+    }
+    
+    // List contents after extraction
+    QStringList afterContents = destDir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
+    log("Contenido después de extracción: " + QString::number(afterContents.size()) + " elementos");
+    
+    if (afterContents.isEmpty()) {
+        log("ERROR: No se extrajo ningún contenido del tarball");
+        return false;
+    }
+    
+    // Log what was extracted
+    foreach (const QString &item, afterContents) {
+        QFileInfo itemInfo(destDir.absoluteFilePath(item));
+        if (itemInfo.isDir()) {
+            log("Directorio extraído: " + item);
+        } else {
+            log("Archivo extraído: " + item);
+        }
     }
     
     log("Extracción completada exitosamente");
@@ -513,117 +555,99 @@ bool Installer::downloadFile(const QUrl &url, const QString &destPath)
 
 QString Installer::findExecutableInDirectory(const QString &dirPath)
 {
+    return findExecutableInDirectoryRecursive(dirPath, 0);
+}
+
+QString Installer::findExecutableInDirectoryRecursive(const QString &dirPath, int depth)
+{
+    const int MAX_DEPTH = 3;
+    
+    log("Buscando ejecutables en: " + dirPath + " (profundidad: " + QString::number(depth) + ")");
+    
     QDir dir(dirPath);
+    if (!dir.exists()) {
+        log("ERROR: El directorio no existe: " + dirPath);
+        return "";
+    }
     
-    // First, check if there's a subdirectory with common names (like "Windsurf")
-    QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    foreach (const QString &subdir, subdirs) {
-        QString subPath = dirPath + "/" + subdir;
+    // Check for executables in current directory
+    QStringList files = dir.entryList(QDir::Files | QDir::Executable);
+    log("Archivos ejecutables en directorio: " + QString::number(files.size()));
+    
+    foreach (const QString &file, files) {
+        QString filePath = dirPath + "/" + file;
+        QFileInfo fileInfo(filePath);
         
-        // Special handling for Windsurf directory
-        if (subdir.toLower() == "windsurf") {
-            log("Detectada carpeta Windsurf: " + subPath);
-            QString execInWindsurf = findExecutableInDirectory(subPath);
-            if (!execInWindsurf.isEmpty()) {
-                return execInWindsurf;
+        // Skip some common non-application executables
+        if (file.toLower() == "sh" || file.toLower() == "bash" || 
+            file.toLower() == "chmod" || file.toLower() == "ln") {
+            continue;
+        }
+        
+        log("Archivo ejecutable encontrado: " + filePath);
+        
+        // Check if it's a binary file (not a script)
+        if (fileInfo.isFile() && fileInfo.isExecutable()) {
+            // Additional check: see if it's a binary (ELF) or a script
+            QFile execFile(filePath);
+            if (execFile.open(QIODevice::ReadOnly)) {
+                QByteArray header = execFile.read(4);
+                execFile.close();
+                
+                // ELF files start with 0x7F 'ELF'
+                QByteArray elfHeader = QByteArray::fromHex("7F454C46");
+                if (header.startsWith(elfHeader) || header.startsWith("#!")) {
+                    log("Ejecutable válido encontrado: " + filePath);
+                    return filePath;
+                }
             }
         }
+    }
+    
+    // If no executables found and we haven't reached max depth, check subdirectories
+    if (files.isEmpty() && depth < MAX_DEPTH) {
+        QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        log("Subdirectorios encontrados: " + QString::number(subdirs.size()));
         
-        // Check other common subdirectory names
-        if (subdir.toLower() == "cursor" || subdir.toLower() == "code" || 
-            subdir.toLower() == "vscode" || subdir.toLower().contains("visual")) {
-            log("Detectada subcarpeta de aplicación: " + subdir);
-            QString execInSub = findExecutableInDirectory(subPath);
-            if (!execInSub.isEmpty()) {
-                return execInSub;
+        // If exactly one subdirectory, descend automatically
+        if (subdirs.size() == 1) {
+            QString subPath = dirPath + "/" + subdirs.first();
+            log("Descendiendo automáticamente al único subdirectorio: " + subPath);
+            return findExecutableInDirectoryRecursive(subPath, depth + 1);
+        }
+        
+        // If multiple subdirectories, try each one
+        foreach (const QString &subdir, subdirs) {
+            QString subPath = dirPath + "/" + subdir;
+            log("Probando subdirectorio: " + subPath);
+            QString result = findExecutableInDirectoryRecursive(subPath, depth + 1);
+            if (!result.isEmpty()) {
+                return result;
             }
         }
-    }
-    
-    // Common executable names for VS Code and variants
-    QStringList vsCodeNames = {"code", "vscode", "code-oss", "code-insiders"};
-    QStringList windsurfNames = {"windsurf", "windsurf-bin"};
-    QStringList cursorNames = {"cursor", "cursor-bin"};
-    QStringList genericNames = {"app", "run"};
-    
-    // Check for Windsurf first (specific variant)
-    foreach (const QString &name, windsurfNames) {
-        QString execPath = dirPath + "/" + name;
-        if (QFile::exists(execPath) && QFileInfo(execPath).isExecutable()) {
-            log("Ejecutable Windsurf encontrado: " + execPath);
-            return execPath;
-        }
-    }
-    
-    // Check for Cursor
-    foreach (const QString &name, cursorNames) {
-        QString execPath = dirPath + "/" + name;
-        if (QFile::exists(execPath) && QFileInfo(execPath).isExecutable()) {
-            log("Ejecutable Cursor encontrado: " + execPath);
-            return execPath;
-        }
-    }
-    
-    // Check for VS Code variants
-    foreach (const QString &name, vsCodeNames) {
-        QString execPath = dirPath + "/" + name;
-        if (QFile::exists(execPath) && QFileInfo(execPath).isExecutable()) {
-            log("Ejecutable VS Code encontrado: " + execPath);
-            return execPath;
-        }
-    }
-    
-    // Check for generic executables
-    foreach (const QString &name, genericNames) {
-        QString execPath = dirPath + "/" + name;
-        if (QFile::exists(execPath) && QFileInfo(execPath).isExecutable()) {
-            log("Ejecutable genérico encontrado: " + execPath);
-            return execPath;
-        }
-    }
-    
-    // Look for AppImage files
-    QStringList filters;
-    filters << "*.AppImage" << "*.run" << "*.bin" << "code*" << "windsurf*" << "cursor*" << "app";
-    
-    QStringList files = dir.entryList(filters, QDir::Files | QDir::Executable);
-    if (!files.isEmpty()) {
-        QString foundFile = dirPath + "/" + files.first();
-        log("Archivo ejecutable encontrado: " + foundFile);
-        return foundFile;
     }
     
     log("No se encontró ejecutable en: " + dirPath);
     return "";
 }
 
-QString Installer::getAppNameFromPath(const QString &path)
+QString Installer::getAppNameFromPath(const QString &execPath)
 {
-    QFileInfo fileInfo(path);
-    QString baseName = fileInfo.baseName();
+    QFileInfo execInfo(execPath);
+    QString appName = execInfo.baseName();
     
-    // Pattern for Windsurf
-    QRegularExpression windsurfRe(R"((?:windsurf)[^\/]*)", QRegularExpression::CaseInsensitiveOption);
-    QRegularExpressionMatch windsurfMatch = windsurfRe.match(baseName);
-    if (windsurfMatch.hasMatch()) {
-        return windsurfMatch.captured(0).toLower();
+    // Special handling for common executable names
+    if (appName.toLower() == "code") {
+        return "VSCode";
+    } else if (appName.toLower() == "windsurf") {
+        return "Windsurf";
+    } else if (appName.toLower() == "cursor") {
+        return "Cursor";
+    } else if (appName.toLower() == "vscode") {
+        return "VSCode";
     }
     
-    // Pattern for Cursor
-    QRegularExpression cursorRe(R"((?:cursor)[^\/]*)", QRegularExpression::CaseInsensitiveOption);
-    QRegularExpressionMatch cursorMatch = cursorRe.match(baseName);
-    if (cursorMatch.hasMatch()) {
-        return cursorMatch.captured(0).toLower();
-    }
-    
-    // Pattern for VS Code variants
-    QRegularExpression vsCodeRe(R"((?:code|vscode|visual[-_]?studio[-_]?code)[^\/]*)", QRegularExpression::CaseInsensitiveOption);
-    QRegularExpressionMatch vsCodeMatch = vsCodeRe.match(baseName);
-    if (vsCodeMatch.hasMatch()) {
-        return vsCodeMatch.captured(0).toLower();
-    }
-    
-    return baseName;
+    return appName;
 }
 
 QString Installer::getVersionFromExecutable(const QString &execPath)
@@ -699,10 +723,6 @@ void Installer::log(const QString &message)
     QString logEntry = QString("[%1] %2").arg(timestamp, message);
     
     emit logMessage(logEntry);
-    
-    if (m_logTextEdit) {
-        m_logTextEdit->append(logEntry);
-    }
 }
 
 void Installer::updateProgress(int value)
@@ -781,6 +801,9 @@ bool Installer::copyDirectoryRecursively(const QString &sourcePath, const QStrin
     // Copy all files and subdirectories
     QStringList entries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
     
+    int totalFiles = entries.size();
+    int copiedFiles = 0;
+    
     foreach (const QString &entry, entries) {
         QString sourceEntry = sourcePath + "/" + entry;
         QString destEntry = destPath + "/" + entry;
@@ -812,6 +835,16 @@ bool Installer::copyDirectoryRecursively(const QString &sourcePath, const QStrin
                 QFile destFile(destEntry);
                 destFile.setPermissions(fileInfo.permissions());
             }
+        }
+        
+        // Update progress and process UI events to prevent freezing
+        copiedFiles++;
+        if (copiedFiles % 10 == 0) { // Update every 10 files
+            int progressPercent = 60 + (int)((float)copiedFiles / totalFiles * 30); // 60-90% range
+            updateProgress(progressPercent);
+            
+            // Process UI events to keep interface responsive
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         }
     }
     

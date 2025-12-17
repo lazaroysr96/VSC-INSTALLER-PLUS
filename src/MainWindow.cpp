@@ -14,8 +14,16 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_installer(new Installer(this))
+    , m_launcherCreator(new LauncherCreator(this))
+    , m_tabWidget(new QTabWidget(this))
 {
     ui->setupUi(this);
+    
+    // Create tab widget and add installer interface
+    m_tabWidget->addTab(ui->centralwidget, "Instalador de Aplicaciones");
+    m_tabWidget->addTab(m_launcherCreator, "Generador de Lanzadores");
+    
+    setCentralWidget(m_tabWidget);
     
     setupConnections();
     
