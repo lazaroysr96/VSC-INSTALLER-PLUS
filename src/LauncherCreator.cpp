@@ -63,18 +63,25 @@ void LauncherCreator::setupUI()
     
     // Name field
     QHBoxLayout *nameLayout = new QHBoxLayout();
-    nameLayout->addWidget(new QLabel("Nombre:"));
+    QLabel *nameLabel = new QLabel("Nombre:");
+    nameLabel->setMinimumWidth(80);  // Fixed width for alignment
+    nameLabel->setStyleSheet("float: left;");  // Left alignment
     m_nameLineEdit = new QLineEdit(this);
     m_nameLineEdit->setPlaceholderText("Nombre del lanzador (ej: Mi Aplicación)");
+    nameLayout->addWidget(nameLabel);
     nameLayout->addWidget(m_nameLineEdit);
     basicLayout->addLayout(nameLayout);
     
     // Executable field
     QHBoxLayout *execLayout = new QHBoxLayout();
-    execLayout->addWidget(new QLabel("Ejecutable:"));
+    QLabel *execLabel = new QLabel("Ejecutable:");
+    execLabel->setMinimumWidth(80);  // Fixed width for alignment
+    execLabel->setStyleSheet("float: left;");  // Left alignment
     m_executableLineEdit = new QLineEdit(this);
     m_executableLineEdit->setPlaceholderText("Ruta al ejecutable...");
     m_browseExecutableButton = new QPushButton("Examinar...", this);
+    m_browseExecutableButton->setMaximumWidth(100);  // Consistent button width
+    execLayout->addWidget(execLabel);
     execLayout->addWidget(m_executableLineEdit);
     execLayout->addWidget(m_browseExecutableButton);
     basicLayout->addLayout(execLayout);
@@ -84,6 +91,16 @@ void LauncherCreator::setupUI()
     // Icon Group
     QGroupBox *iconGroup = new QGroupBox("Icono", this);
     QHBoxLayout *iconLayout = new QHBoxLayout(iconGroup);
+
+
+    m_iconPreviewLabel = new QLabel(this);
+    m_iconPreviewLabel->setFixedSize(64, 64);
+    m_iconPreviewLabel->setAlignment(Qt::AlignCenter);
+    m_iconPreviewLabel->setStyleSheet("border: 1px solid gray; background-color: white;border-radius: 4px");
+    m_iconPreviewLabel->setText("Sin icono");
+    iconLayout->addWidget(m_iconPreviewLabel);
+
+
     
     m_iconLineEdit = new QLineEdit(this);
     m_iconLineEdit->setPlaceholderText("Ruta al icono (opcional)...");
@@ -91,12 +108,7 @@ void LauncherCreator::setupUI()
     iconLayout->addWidget(m_iconLineEdit);
     iconLayout->addWidget(m_browseIconButton);
     
-    m_iconPreviewLabel = new QLabel(this);
-    m_iconPreviewLabel->setFixedSize(64, 64);
-    m_iconPreviewLabel->setAlignment(Qt::AlignCenter);
-    m_iconPreviewLabel->setStyleSheet("border: 1px solid gray; background-color: white;");
-    m_iconPreviewLabel->setText("Sin icono");
-    iconLayout->addWidget(m_iconPreviewLabel);
+    
     
     mainLayout->addWidget(iconGroup);
     
