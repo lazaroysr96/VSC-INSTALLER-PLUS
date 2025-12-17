@@ -13,11 +13,13 @@ set(SOURCES
     src/main.cpp
     src/MainWindow.cpp
     src/Installer.cpp
+    src/LauncherCreator.cpp
 )
 
 set(HEADERS
     src/MainWindow.h
     src/Installer.h
+    src/LauncherCreator.h
 )
 
 qt5_add_resources(RESOURCES assets/resources.qrc)

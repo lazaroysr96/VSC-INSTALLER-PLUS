@@ -699,10 +699,6 @@ void Installer::log(const QString &message)
     QString logEntry = QString("[%1] %2").arg(timestamp, message);
     
     emit logMessage(logEntry);
-    
-    if (m_logTextEdit) {
-        m_logTextEdit->append(logEntry);
-    }
 }
 
 void Installer::updateProgress(int value)
